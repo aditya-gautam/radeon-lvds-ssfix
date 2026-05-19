@@ -163,14 +163,18 @@ fi
 RUNNING_LOCALVERSION="${KERNEL_RELEASE#*-}"
 RUNNING_LOCALVERSION="-${RUNNING_LOCALVERSION}"
 
-# We cannot easily set LOCALVERSION via scripts/config without 'config' being built.
-# Use grep+sed approach instead.
-if grep -q '^CONFIG_LOCALVERSION=' .config; then
-    sed -i "s|^CONFIG_LOCALVERSION=.*|CONFIG_LOCALVERSION="${RUNNING_LOCALVERSION}"|" .config
-else
-    echo "CONFIG_LOCALVERSION="${RUNNING_LOCALVERSION}"" >> .config
-fi
+# Setting CONFIG_LOCALVERSION via .config is unreliable: Ubuntu (and some other
+# distros) reset it during make olddefconfig.  Use the localversion-* file
+# mechanism instead, which the kernel Makefile reads independently of .config
+# and which olddefconfig leaves alone.
+LOCALVERSION_FILE="localversion-radeon-lvds-ssfix"
+echo "${RUNNING_LOCALVERSION}" > "${LOCALVERSION_FILE}"
+log "Wrote ${LOCALVERSION_FILE} containing '${RUNNING_LOCALVERSION}'"
+# Also disable AUTO if set (this one olddefconfig respects)
 sed -i 's|^CONFIG_LOCALVERSION_AUTO=y|# CONFIG_LOCALVERSION_AUTO is not set|' .config
+
+# Trap to clean up the localversion file on exit (success or failure)
+trap 'rm -f "$KERNEL_SRC_ROOT/$LOCALVERSION_FILE"' EXIT
 
 # Force regen of the version headers
 rm -f include/generated/utsrelease.h include/generated/compile.h .version include/config/kernel.release
