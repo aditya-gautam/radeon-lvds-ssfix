@@ -70,6 +70,15 @@ If you're using the `amdgpu` driver instead of `radeon`, this fix does
 not apply.  `amdgpu` was extended to cover GPUs from approximately the
 SI generation forward; `radeon` covers everything older.
 
+## Tested on
+
+| Distro       | Kernel             | GPU                          | Panel                    | Status   |
+|--------------|--------------------|------------------------------|--------------------------|----------|
+| Ubuntu 26.04 | 7.0.0-15-generic   | RV730 (HD 4670 Mobility)     | Samsung LTN156AT02P01    | Working  |
+
+If you've used this fix successfully on different hardware/kernel/distro,
+please open an issue or PR to add to this list.
+
 ## Installation
 
 ### Prerequisites
@@ -89,6 +98,27 @@ sudo reboot
 ```
 
 After reboot, your LVDS display should be clean.
+
+### If things go wrong
+
+If after `install.sh` and reboot you can't get a working graphical session:
+
+1. At the GRUB menu, press `e` to edit your boot entry
+2. Add ` nomodeset` to the end of the `linux` line
+3. Press `Ctrl-X` (or `F10`) to boot
+4. Once booted (with a fallback graphical mode), open a terminal and run:
+
+```bash
+sudo /path/to/radeon-lvds-ssfix/uninstall.sh
+sudo reboot```
+5. The original (unpatched) module will be restored, and you'll be back to the pre-fix state.
+If you can't access GRUB or the system is fully unbootable, you can boot from a Linux live USB, mount your root filesystem, and manually replace the patched module with the backup:
+
+# After mounting your root partition at /mnt
+```bash
+KERNEL=$(ls /mnt/lib/modules)
+sudo cp /mnt/lib/modules/$KERNEL/kernel/drivers/gpu/drm/radeon/radeon.ko.zst.bak \
+        /mnt/lib/modules/$KERNEL/kernel/drivers/gpu/drm/radeon/radeon.ko.zst```
 
 ### Distro-specific notes
 
@@ -192,6 +222,28 @@ code path (CRTC programming → encoder dpms → UNIPHY transmitter setup →
 PPLL programming → `EnableSpreadSpectrumOnPPLL` firmware call) and
 correlating each parameter against EDID-declared values eventually
 isolated the SSC parameters as the cause.
+
+## Diagnostic notes
+
+The corruption pattern in affected systems looks like structurally-coherent
+content (text outlines and window edges remain recognisable) overlaid with
+chromatic noise.  This signature comes from the panel's input PLL
+attempting to track a modulated pixel clock that exceeds its tolerance —
+sync is approximately maintained but pixel data is misaligned.
+
+Empirical testing on the test machine showed:
+
+| SSC percentage | Result          |
+|----------------|-----------------|
+| 1.40% (VBIOS)  | Heavy corruption|
+| 1.00%          | Heavy corruption|
+| 0.50%          | Corruption      |
+| 0.00% (off)    | Clean display   |
+
+Reducing the percentage alone wasn't sufficient.  The auxiliary modulation
+parameters (step, delay, range, refdiv) in the VBIOS PPLL_SS_Info table
+are also panel-specific and are tuned for the originally-shipped panel's
+PLL characteristics.  Disabling SS entirely is the correct fix.
 
 ## Author
 

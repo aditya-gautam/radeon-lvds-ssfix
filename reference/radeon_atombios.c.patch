@@ -1,0 +1,25 @@
+--- /home/aditya-gautam/radeon-lvds-ssfix/reference/radeon_atombios.c.pristine	2026-05-20 02:53:11.956674629 +0530
++++ /home/aditya-gautam/radeon-lvds-ssfix/reference/radeon_atombios.c.patched	2026-05-20 02:53:12.084437256 +0530
+@@ -1386,6 +1386,22 @@
+ 	uint8_t frev, crev;
+ 	int i, num_indices;
+ 
++	/* BEGIN: radeon-lvds-ssfix
++	 * Panel-swap workaround: VBIOS PPLL_SS_Info entries with id < 0xF0 are
++	 * LVDS-style (DP uses 0xF1+ per ATOM_DP_SS_ID*).  These were tuned for the
++	 * originally-shipped panel and apply incompatible SSC modulation to
++	 * replacement panels with different input PLL characteristics.
++	 * Empirical testing on a Dell Studio XPS 1645 with a swapped LVDS panel
++	 * confirmed that even reducing the percentage to 0.50% center spread does
++	 * not help; the auxiliary modulation parameters are also panel-specific.
++	 * Skip SS lookup for LVDS IDs entirely.  DP IDs (>= 0xF0) are GPU-specific
++	 * and unaffected.
++	 * https://github.com/aditya-gautam/radeon-lvds-ssfix
++	 * END: radeon-lvds-ssfix
++	 */
++	if (id < 0xF0)
++		return false;
++
+ 	memset(ss, 0, sizeof(struct radeon_atom_ss));
+ 	if (atom_parse_data_header(mode_info->atom_context, index, &size,
+ 				   &frev, &crev, &data_offset)) {
