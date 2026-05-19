@@ -1,0 +1,22 @@
+# Editor backups
+*~
+*.swp
+*.swo
+.DS_Store
+
+# Build artifacts (in case anyone runs install.sh in the repo dir somehow)
+*.ko
+*.ko.zst
+*.o
+*.mod
+*.mod.c
+.tmp_versions/
+Module.symvers
+modules.order
+
+# Python
+__pycache__/
+*.pyc
+
+# Test artifacts
+/tmp-test/
